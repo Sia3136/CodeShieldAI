@@ -1,0 +1,21 @@
+# Simplified .gitignore
+
+# Dependencies
+venv/
+node_modules/
+__pycache__/
+.env
+*.log
+
+# Large ML Models (User's specific request to exclude from GitHub)
+models/
+backend/models/
+*.safetensors
+*.bin
+*.pkl
+*.pt
+
+# Other
+.DS_Store
+dist/
+build/
