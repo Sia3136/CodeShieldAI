@@ -4,16 +4,14 @@ Secure your code with **Transformer-based semantic analysis** and **deterministi
 
 CodeShieldAI is a full-stack application security scanning platform that bridges traditional static analysis and modern deep learning. It combines **fine‑tuned GraphCodeBERT / CodeBERT** with a robust **Multi‑Language Heuristic Engine** to deliver high-confidence vulnerability detection across **8+ languages**.
 
-> New-trend README layout: this repository uses **multi-README docs** (root overview + component READMEs) so contributors can jump straight into **frontend**, **backend**, **ML**, and **rules** without scrolling through one giant document.
-
 ---
 
 ## Quick Links (Component READMEs)
-- **Backend** → `backend/README.md`
-- **Frontend** → `frontend/README.md`
-- **ML / Models** → `ml/README.md`
-- **Heuristic Engine / Rules** → `rules/README.md`
-- **Docs (Architecture / API / Ops)** → `docs/README.md`
+- **Backend** → [backend/README.md](backend/README.md)
+- **Frontend** → [frontend/README.md](frontend/README.md)
+- **ML / Models** → [ml/README.md](ml/README.md)
+- **Heuristic Engine / Rules** → [rules/README.md](rules/README.md)
+- **Docs (Architecture / API / Ops)** → [docs/README.md](docs/README.md)
 
 ---
 
@@ -69,11 +67,12 @@ The platform supports:
 **Rule Engine coverage:**
 - Python
 - Java
-- Go
+- C
 - JavaScript / TypeScript
 - PHP
-- C / C++
-- C#
+- Node.js
+- C++
+- SQL
 
 **ML layer:** can generalize beyond these depending on tokenization and training distribution, but deterministic guarantees focus on the above.
 
@@ -97,45 +96,13 @@ If a high-severity deterministic rule matches, it can **boost** ML results to en
 
 ### System Architecture
 
-```mermaid
-flowchart LR
-  U[Developer] --> FE[React Dashboard<br/>(Vercel)]
-  FE -->|OAuth Login| OA[OAuth Gate<br/>(GitHub / Google)]
-  FE -->|Scan Request| API[FastAPI Backend<br/>(Hugging Face Spaces)]
-
-  API --> ING[Ingestion & Normalization<br/>Repo fetch / upload parse]
-  ING --> RULES[Heuristic Engine<br/>Multi-language rules]
-  ING --> MM[Model Manager<br/>GraphCodeBERT / CodeBERT]
-  MM --> INF[Transformer Inference<br/>GPU/CPU]
-  RULES --> SCORE[Hybrid Scorer]
-  INF --> SCORE[Hybrid Scorer]
-  SCORE --> EXPL[AI Explanation Cabinet<br/>Findings + Fixes]
-  EXPL --> REP[Actionable Report<br/>(JSON + Remediation)]
-  API --> DB[(MongoDB Atlas<br/>Scan History)]
-  REP --> FE
-  DB --> FE
-  FE -->|Download| PDF[PDF Report Export]
-```
+![System Architecture](docs/system-architecture.png)
 
 ---
 
 ### ML Inference Architecture
 
-```mermaid
-flowchart TD
-  A[Source code input<br/>file/function/chunk] --> B[Preprocessing<br/>language detect, normalize, chunk]
-  B --> C[Tokenizer<br/>BPE / model-specific]
-  C --> D[Transformer Encoder<br/>GraphCodeBERT or CodeBERT]
-  D --> E[Classification Head<br/>Dropout + Linear]
-  E --> F[Outputs<br/>p(vuln), optional type distribution]
-  F --> G[Calibration / Thresholding]
-  G --> H[Chunk → File → Repo aggregation]
-```
-
-**Recommended granularity**
-- Prefer function-level scanning when possible (strong signal).
-- Use sliding windows for large files.
-- Aggregate windows into file- and repo-level risk (max or weighted).
+![ML Inference Architecture](docs/ml-inference-architecture.png)
 
 ---
 
