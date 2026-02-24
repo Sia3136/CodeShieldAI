@@ -141,7 +141,7 @@ export function EnhancedAnalyticsDashboard() {
 
     const fetch_ = async () => {
         try {
-            const tok = localStorage.getItem('accessToken');
+            const tok = localStorage.getItem('auth_token');
             const apiBase = import.meta.env.VITE_API_URL || '';
             const url = tok
                 ? `${apiBase}/analytics/detailed?token=${tok}`
