@@ -57,36 +57,52 @@
 
             console.log(`[OAuth] Detected provider: ${provider}`);
 
-            if (error) {
-                if (window.opener) {
-                    window.opener.postMessage({
-                        type: `oauth_error`,
-                        provider: provider,
-                        error: urlParams.get('error_description') || error
-                    }, window.location.origin);
-                }
-                setTimeout(() => window.close(), 3000);
-                return;
-            }
+            const payload = error
+                ? { type: `oauth_error`, provider, error: urlParams.get('error_description') || error }
+                : code
+                    ? { type: `oauth_code_received`, provider, code, state }
+                    : null;
 
-            if (!code) {
+            if (!payload) {
                 document.getElementById('status').innerText = 'Authorization code missing.';
                 return;
             }
 
-            if (window.opener) {
-                console.log(`[OAuth] Sending code to opener: ${code.substring(0, 5)}...`);
-                window.opener.postMessage({
-                    type: `oauth_code_received`,
-                    provider: provider,
-                    code: code,
-                    state: state
-                }, window.location.origin);
+            // ─── Primary: postMessage to popup opener ───────────────────────
+            if (window.opener && !window.opener.closed) {
+                try {
+                    console.log(`[OAuth] Sending via postMessage to opener`);
+                    window.opener.postMessage(payload, window.location.origin);
+                    document.getElementById('status').innerText = 'Authentication complete! Closing...';
+                    setTimeout(() => window.close(), 1500);
+                    return;
+                } catch (e) {
+                    console.warn('[OAuth] postMessage to opener failed, trying fallback', e);
+                }
+            }
 
-                document.getElementById('status').innerText = 'Authentication complete! Closing...';
-                // Note: The parent window will close the popup after it handles the message
-            } else {
-                document.getElementById('status').innerText = 'No opener window found. Please log in from the main site.';
+            // ─── Fallback: BroadcastChannel (same-origin) ───────────────────
+            // Works when the main tab opens auth in a new TAB instead of a popup
+            try {
+                const bc = new BroadcastChannel('codeshield_oauth');
+                bc.postMessage(payload);
+                bc.close();
+                document.getElementById('status').innerText = 'Authentication complete! You can close this tab.';
+                console.log('[OAuth] Sent via BroadcastChannel');
+                setTimeout(() => window.close(), 2000);
+                return;
+            } catch (e) {
+                console.warn('[OAuth] BroadcastChannel failed, trying sessionStorage fallback', e);
+            }
+
+            // ─── Last resort: sessionStorage polling ────────────────────────
+            try {
+                sessionStorage.setItem('oauth_payload', JSON.stringify(payload));
+                document.getElementById('status').innerText = 'Authentication complete! You can close this tab.';
+                console.log('[OAuth] Stored in sessionStorage as fallback');
+                setTimeout(() => window.close(), 2000);
+            } catch (e) {
+                document.getElementById('status').innerText = 'Authentication failed. Please close this tab and try again.';
             }
         }
 

@@ -141,13 +141,24 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
             window.addEventListener('message', handleMessage);
 
+            // ── BroadcastChannel fallback (when opener is blocked) ──
+            let bc: BroadcastChannel | null = null;
+            try {
+                bc = new BroadcastChannel('codeshield_oauth');
+                bc.onmessage = (evt) => {
+                    handleMessage({ ...evt, origin: window.location.origin } as MessageEvent);
+                };
+            } catch (_) { /* BroadcastChannel not supported */ }
+
             // Check if popup was closed
             const checkClosed = setInterval(() => {
                 if (popup?.closed) {
                     clearInterval(checkClosed);
                     window.removeEventListener('message', handleMessage);
+                    bc?.close();
                 }
             }, 500);
+
 
         } catch (error: any) {
             console.error('OAuth error:', error);
