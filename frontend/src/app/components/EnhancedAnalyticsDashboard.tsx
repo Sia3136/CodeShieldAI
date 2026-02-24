@@ -146,8 +146,36 @@ export function EnhancedAnalyticsDashboard() {
             const url = tok
                 ? `${apiBase}/analytics/detailed?token=${tok}`
                 : `${apiBase}/analytics/detailed`;
-            setData(await (await fetch(url)).json());
-        } catch (e) { console.error(e); }
+            const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            if (json && typeof json === 'object') {
+                setData(json);
+            } else {
+                throw new Error('Invalid response');
+            }
+        } catch (e) {
+            console.error('[Dashboard] fetch failed:', e);
+            // Set fallback so the dashboard renders with static data instead of spinning forever
+            if (!data) {
+                setData({
+                    vulnerability_distribution: [],
+                    scan_timeline: [],
+                    risk_distribution: [
+                        { range: '0-25 (Low)', count: 0 },
+                        { range: '26-50 (Medium)', count: 0 },
+                        { range: '51-75 (High)', count: 0 },
+                        { range: '76-100 (Critical)', count: 0 },
+                    ],
+                    top_vulnerable_files: [],
+                    model_performance: [],
+                    security_trend: [],
+                    confidence_distribution: [],
+                    total_scans: 0,
+                    total_vulnerabilities: 0,
+                });
+            }
+        }
         finally { setLoading(false); }
     };
 

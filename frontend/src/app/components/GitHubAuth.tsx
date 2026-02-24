@@ -28,20 +28,47 @@ export function GitHubAuth({ onAuthChange }: GitHubAuthProps) {
                 setAccessToken(storedToken);
                 onAuthChange?.(parsedUser, storedToken);
             } catch (e) {
-                // Invalid stored data, clear it
                 localStorage.removeItem('github_user');
                 localStorage.removeItem('github_token');
             }
         }
 
-        // Handle OAuth callback
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const state = urlParams.get('state');
+        // ── Listen for OAuth callback (popup flow) ──
+        const bc = new BroadcastChannel('codeshield_oauth');
+        bc.onmessage = (ev) => {
+            if (ev.data?.type === 'oauth_code_received' && ev.data?.provider === 'github') {
+                handleCallback(ev.data.code, ev.data.state || '');
+            }
+        };
 
-        if (code && state) {
-            handleCallback(code, state);
-        }
+        // Also check sessionStorage (fallback when BroadcastChannel is blocked)
+        const checkStorage = () => {
+            const pending = sessionStorage.getItem('oauth_payload');
+            if (pending) {
+                sessionStorage.removeItem('oauth_payload');
+                try {
+                    const d = JSON.parse(pending);
+                    if (d.provider === 'github' && d.code) {
+                        handleCallback(d.code, d.state || '');
+                    }
+                } catch { }
+            }
+        };
+        const storageInterval = setInterval(checkStorage, 500);
+
+        // Handle message events from popup
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'oauth_code_received' && event.data?.provider === 'github') {
+                handleCallback(event.data.code, event.data.state || '');
+            }
+        };
+        window.addEventListener('message', handleMessage);
+
+        return () => {
+            bc.close();
+            clearInterval(storageInterval);
+            window.removeEventListener('message', handleMessage);
+        };
     }, []);
 
     const handleCallback = async (code: string, state: string) => {
@@ -51,7 +78,6 @@ export function GitHubAuth({ onAuthChange }: GitHubAuthProps) {
 
             // Store in localStorage
             localStorage.setItem('github_user', JSON.stringify(result.user));
-            // Use the github-specific token for scanning, don't overwrite the app session
             const scanToken = result.github_access_token || result.access_token;
             localStorage.setItem('github_token', scanToken);
 
@@ -60,9 +86,6 @@ export function GitHubAuth({ onAuthChange }: GitHubAuthProps) {
             onAuthChange?.(result.user, scanToken);
 
             toast.success(`Welcome, ${result.user.login}!`);
-
-            // Clean up URL
-            window.history.replaceState({}, document.title, window.location.pathname);
         } catch (error: any) {
             toast.error(error.message || 'Authentication failed');
         } finally {
@@ -78,8 +101,29 @@ export function GitHubAuth({ onAuthChange }: GitHubAuthProps) {
             // Store state for verification
             sessionStorage.setItem('github_oauth_state', state);
 
-            // Redirect to GitHub
-            window.location.href = auth_url;
+            // ── Open as popup (matches callback.html) ──
+            const w = 600, h = 700;
+            const left = window.screenX + (window.outerWidth - w) / 2;
+            const top = window.screenY + (window.outerHeight - h) / 2;
+            const popup = window.open(
+                auth_url,
+                'github_oauth',
+                `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
+            );
+
+            // Fallback: if popup was blocked, do a full redirect
+            if (!popup || popup.closed) {
+                window.location.href = auth_url;
+                return;
+            }
+
+            // Check if popup was closed manually
+            const pollClose = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(pollClose);
+                    setLoading(false);
+                }
+            }, 500);
         } catch (error: any) {
             toast.error(error.message || 'Failed to initiate authentication');
             setLoading(false);
