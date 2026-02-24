@@ -96,13 +96,13 @@ If a high-severity deterministic rule matches, it can **boost** ML results to en
 
 ### System Architecture
 
-![System Architecture](docs/system-architecture.png)
+<img width="2816" height="1536" alt="Gemini_Generated_Image_ozt9bqozt9bqozt9" src="https://github.com/user-attachments/assets/50672b7a-a92e-4cec-9c12-c5efcd325428" />
 
 ---
 
 ### ML Inference Architecture
 
-![ML Inference Architecture](docs/ml-inference-architecture.png)
+<img width="2816" height="1536" alt="Gemini_Generated_Image_ly4dmcly4dmcly4d" src="https://github.com/user-attachments/assets/f335aba6-0ab9-4149-964e-63ae14df715a" />
 
 ---
 
