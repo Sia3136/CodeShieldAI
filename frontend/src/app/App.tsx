@@ -30,6 +30,7 @@ import {
   History,
 } from "lucide-react";
 import { Toaster } from "@/app/components/ui/sonner";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "motion/react";
 import { ThemeProvider } from "@/app/components/ThemeProvider";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
@@ -55,10 +56,17 @@ export default function App() {
           const userData = await getCurrentUser(token);
           setAccountUser(userData);
           setShowLanding(false); // Skip landing if token is valid
-        } catch (error) {
-          console.error('Session validation failed:', error);
-          // Token invalid/expired — clear it and stay on landing
-          localStorage.removeItem('auth_token');
+        } catch (error: any) {
+          console.error('[AUTH ERROR] Session validation failed:', error);
+          const detail = error.response?.data?.detail || error.message || 'Session expired';
+          console.error('[AUTH ERROR] Detail:', detail);
+
+          // Clear token if it's a definite 401/403/404
+          if (error.response?.status === 401 || error.response?.status === 404) {
+            localStorage.removeItem('auth_token');
+            // Only toast if it was a real attempt (token present)
+            if (token) toast.error(`Session invalid: ${detail}`);
+          }
         } finally {
           if (!silent) setLoadingUser(false);
         }
