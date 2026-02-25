@@ -33,42 +33,10 @@ export function GitHubAuth({ onAuthChange }: GitHubAuthProps) {
             }
         }
 
-        // ── Listen for OAuth callback (popup flow) ──
-        const bc = new BroadcastChannel('codeshield_oauth');
-        bc.onmessage = (ev) => {
-            if (ev.data?.type === 'oauth_code_received' && ev.data?.provider === 'github') {
-                handleCallback(ev.data.code, ev.data.state || '');
-            }
-        };
-
-        // Also check sessionStorage (fallback when BroadcastChannel is blocked)
-        const checkStorage = () => {
-            const pending = sessionStorage.getItem('oauth_payload');
-            if (pending) {
-                sessionStorage.removeItem('oauth_payload');
-                try {
-                    const d = JSON.parse(pending);
-                    if (d.provider === 'github' && d.code) {
-                        handleCallback(d.code, d.state || '');
-                    }
-                } catch { }
-            }
-        };
-        const storageInterval = setInterval(checkStorage, 500);
-
-        // Handle message events from popup
-        const handleMessage = (event: MessageEvent) => {
-            if (event.data?.type === 'oauth_code_received' && event.data?.provider === 'github') {
-                handleCallback(event.data.code, event.data.state || '');
-            }
-        };
-        window.addEventListener('message', handleMessage);
-
-        return () => {
-            bc.close();
-            clearInterval(storageInterval);
-            window.removeEventListener('message', handleMessage);
-        };
+        // ── Check for existing GitHub connection on mount ──
+        // (Full-page redirect flow: callback.html saves auth_token,
+        //  then App.tsx detects it and re-validates session.)
+        // No popup listeners needed anymore.
     }, []);
 
     const handleCallback = async (code: string, state: string) => {

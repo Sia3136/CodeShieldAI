@@ -73,21 +73,22 @@ export default function App() {
     };
     checkAuth();
 
-    // ── React immediately when the OAuth popup writes the token ──
+    // ── Detect token from redirect flow ──
+    // When callback.html saves auth_token, the storage event fires here.
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'auth_token' && e.newValue) {
+        console.log('[App] Token detected via storage event, re-checking auth...');
         checkAuth(true);
       }
     };
     window.addEventListener('storage', onStorage);
 
-    // Fallback poll: every second check if we have a token but no user
-    // (Helps if storage event or postMessage is blocked by COOP/Browser)
+    // Safety fallback: if storage event doesn't fire (e.g. same-tab redirect)
     const pollInterval = setInterval(() => {
       if (!accountUser && localStorage.getItem('auth_token')) {
         checkAuth(true);
       }
-    }, 1000);
+    }, 2000);
 
     return () => {
       window.removeEventListener('storage', onStorage);
