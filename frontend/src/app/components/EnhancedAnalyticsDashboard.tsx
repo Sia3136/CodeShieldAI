@@ -22,6 +22,7 @@ interface AnalyticsData {
     confidence_distribution: Array<{ range: string; count: number }>;
     total_scans: number;
     total_vulnerabilities: number;
+    clean_scans?: number;
 }
 
 /* ─── Strict severity palette — nothing else ─────────────────────────────── */
@@ -237,7 +238,7 @@ export function EnhancedAnalyticsDashboard() {
                 {[
                     { label: 'Total Scans', val: data.total_scans, c: P.info, d: '+12%', Icon: Activity },
                     { label: 'Vulnerabilities', val: data.total_vulnerabilities, c: P.critical, d: '+8%', Icon: AlertTriangle },
-                    { label: 'Scans Passed', val: 25, c: P.low, d: '+15%', Icon: CheckCircle },
+                    { label: 'Scans Passed', val: data.clean_scans ?? Math.max(0, data.total_scans - data.total_vulnerabilities), c: P.low, d: '+15%', Icon: CheckCircle },
                 ].map(({ label, val, c, d, Icon }) => (
                     <div key={label} className="rounded-lg px-3 py-2.5"
                         style={{ background: CARD, border: `1px solid ${BDR}`, boxShadow: '0 2px 8px rgba(0,0,0,0.35)' }}>
