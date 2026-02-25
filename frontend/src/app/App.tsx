@@ -47,24 +47,37 @@ export default function App() {
 
   // Check if user is already logged in on app load
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = async (silent = false) => {
       const token = getToken();
       if (token) {
-        setLoadingUser(true);
+        if (!silent) setLoadingUser(true);
         try {
-          // Attempt to fetch user profile to validate session
           const userData = await getCurrentUser(token);
           setAccountUser(userData);
           setShowLanding(false); // Skip landing if token is valid
         } catch (error) {
           console.error('Session validation failed:', error);
-          // Token invalid/expired - keep landing page
+          // Token invalid/expired — clear it and stay on landing
+          localStorage.removeItem('auth_token');
         } finally {
-          setLoadingUser(false);
+          if (!silent) setLoadingUser(false);
         }
       }
     };
     checkAuth();
+
+    // ── React immediately when the OAuth popup writes the token ──
+    // Note: storage events fire in OTHER tabs when a key changes.
+    // For same-tab writes (popup → parent via postMessage), AuthModal
+    // calls onSuccess() which calls setShowLanding(false), so this is
+    // mainly a safety net for full-redirect flows.
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'auth_token' && e.newValue) {
+        checkAuth(true);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   // Fetch user data when account page is requested
