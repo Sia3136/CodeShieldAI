@@ -123,17 +123,21 @@ allowed_origins = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    # Production Vercel deployment (explicit)
+    "https://code-shield-ai-brown.vercel.app",
 ]
-if FRONTEND_URL:
+if FRONTEND_URL and FRONTEND_URL not in allowed_origins:
     allowed_origins.append(FRONTEND_URL)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    # Allow any Vercel preview deployments AND Hugging Face space previews
+    allow_origin_regex=r"https://(.*\.vercel\.app|.*\.hf\.space)",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ── Environment ──

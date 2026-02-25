@@ -5,6 +5,14 @@
             "destination": "/callback.html"
         },
         {
+            "source": "/auth/callback",
+            "destination": "/callback.html"
+        },
+        {
+            "source": "/auth/callback/",
+            "destination": "/callback.html"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
