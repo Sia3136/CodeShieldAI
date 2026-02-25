@@ -137,37 +137,51 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                 };
             } catch (_) { /* BroadcastChannel not supported */ }
 
-            // ── When popup closes, check if token landed in localStorage ──
-            const checkClosed = setInterval(() => {
+            // ── Continuous Polling ─────────────────────────────────────────
+            // We poll localStorage EVERY tick. This means as soon as 
+            // callback.html writes the token, we catch it—even if COOP 
+            // blocks postMessage or window.closed checks.
+            const startTime = Date.now();
+            const POLL_TIMEOUT = 120000; // 2 minutes max
+
+            const checkAuthStatus = setInterval(() => {
+                // 1. Check if token arrived in localStorage
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    cleanup();
+                    popup?.close();
+                    console.log('[Auth] Token detected via polling');
+                    toast.success(`Logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
+                    onSuccess();
+                    onClose();
+                    return;
+                }
+
+                // 2. Check if popup was closed (safety net)
                 try {
                     if (popup?.closed) {
-                        clearInterval(checkClosed);
-
-                        // Give a small delay for any last message to arrive
+                        // Popup was closed manually, but still no token?
+                        // Give it one last check after a small delay
                         setTimeout(() => {
-                            const token = localStorage.getItem('auth_token');
-                            if (token) {
-                                // callback.html saved the token — login succeeded!
+                            if (!localStorage.getItem('auth_token')) {
                                 cleanup();
-                                console.log('[Auth] Token found in localStorage after popup closed');
-                                toast.success(`Logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
-                                onSuccess();
-                                onClose();
-                            } else {
-                                cleanup();
-                                // No token — user likely cancelled or flow failed
-                                console.log('[Auth] Popup closed without token');
+                                console.log('[Auth] Popup closed by user without token');
                             }
-                        }, 500);
+                        }, 1000);
                     }
                 } catch (e) {
-                    // Ignore COOP errors like "Cross-Origin-Opener-Policy would block the window.closed call"
-                    // We just keep polling until the popup is either closed by the user or closes itself.
+                    // Ignore COOP errors
                 }
-            }, 500);
+
+                // 3. Safety timeout
+                if (Date.now() - startTime > POLL_TIMEOUT) {
+                    cleanup();
+                    console.warn('[Auth] Polling timed out');
+                }
+            }, 800);
 
             function cleanup() {
-                clearInterval(checkClosed);
+                clearInterval(checkAuthStatus);
                 window.removeEventListener('message', handleMessage);
                 bc?.close();
             }
