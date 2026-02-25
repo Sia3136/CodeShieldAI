@@ -139,25 +139,30 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
             // ── When popup closes, check if token landed in localStorage ──
             const checkClosed = setInterval(() => {
-                if (popup?.closed) {
-                    clearInterval(checkClosed);
+                try {
+                    if (popup?.closed) {
+                        clearInterval(checkClosed);
 
-                    // Give a small delay for any last message to arrive
-                    setTimeout(() => {
-                        const token = localStorage.getItem('auth_token');
-                        if (token) {
-                            // callback.html saved the token — login succeeded!
-                            cleanup();
-                            console.log('[Auth] Token found in localStorage after popup closed');
-                            toast.success(`Logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
-                            onSuccess();
-                            onClose();
-                        } else {
-                            cleanup();
-                            // No token — user likely cancelled or flow failed
-                            console.log('[Auth] Popup closed without token');
-                        }
-                    }, 500);
+                        // Give a small delay for any last message to arrive
+                        setTimeout(() => {
+                            const token = localStorage.getItem('auth_token');
+                            if (token) {
+                                // callback.html saved the token — login succeeded!
+                                cleanup();
+                                console.log('[Auth] Token found in localStorage after popup closed');
+                                toast.success(`Logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
+                                onSuccess();
+                                onClose();
+                            } else {
+                                cleanup();
+                                // No token — user likely cancelled or flow failed
+                                console.log('[Auth] Popup closed without token');
+                            }
+                        }, 500);
+                    }
+                } catch (e) {
+                    // Ignore COOP errors like "Cross-Origin-Opener-Policy would block the window.closed call"
+                    // We just keep polling until the popup is either closed by the user or closes itself.
                 }
             }, 500);
 

@@ -75,18 +75,26 @@ export default function App() {
     checkAuth();
 
     // ── React immediately when the OAuth popup writes the token ──
-    // Note: storage events fire in OTHER tabs when a key changes.
-    // For same-tab writes (popup → parent via postMessage), AuthModal
-    // calls onSuccess() which calls setShowLanding(false), so this is
-    // mainly a safety net for full-redirect flows.
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'auth_token' && e.newValue) {
         checkAuth(true);
       }
     };
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
+
+    // Fallback poll: every second check if we have a token but no user
+    // (Helps if storage event or postMessage is blocked by COOP/Browser)
+    const pollInterval = setInterval(() => {
+      if (!accountUser && localStorage.getItem('auth_token')) {
+        checkAuth(true);
+      }
+    }, 1000);
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      clearInterval(pollInterval);
+    };
+  }, [accountUser]);
 
   // Fetch user data when account page is requested
   useEffect(() => {
