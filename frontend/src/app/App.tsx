@@ -53,20 +53,19 @@ export default function App() {
       if (token) {
         if (!silent) setLoadingUser(true);
         try {
+          console.log('[App] Validating session with token...');
           const userData = await getCurrentUser(token);
+          console.log('[App] Session valid for:', userData.email);
           setAccountUser(userData);
           setShowLanding(false); // Skip landing if token is valid
         } catch (error: any) {
-          console.error('[AUTH ERROR] Session validation failed:', error);
-          const detail = error.response?.data?.detail || error.message || 'Session expired';
-          console.error('[AUTH ERROR] Detail:', detail);
+          console.error('[App] Session validation failed:', error);
+          const detail = error.message || 'Session expired';
+          console.error('[App] Error detail:', detail);
 
           // Clear token if it's a definite 401/403/404
-          if (error.response?.status === 401 || error.response?.status === 404) {
-            localStorage.removeItem('auth_token');
-            // Only toast if it was a real attempt (token present)
-            if (token) toast.error(`Session invalid: ${detail}`);
-          }
+          localStorage.removeItem('auth_token');
+          if (!silent) toast.error(`Session invalid: ${detail}`);
         } finally {
           if (!silent) setLoadingUser(false);
         }
@@ -120,8 +119,35 @@ export default function App() {
   }, [showAccount]);
 
 
+  // ── Global Render Logic ──────────────────────────────────────────
+
+  // 1. Initial Authentication Check / Loading State
+  // We show a global loader if we're doing the first check and have a token.
+  // This prevents the "flash" of landing page or sticking on it during slow network.
+  if (loadingUser && !accountUser && getToken()) {
+    return (
+      <ThemeProvider>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a1628] text-white">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-blue-500 rounded-full blur-2xl opacity-20 animate-pulse" />
+            <div className="relative p-4 bg-white/5 rounded-2xl border border-white/10">
+              <Logo className="w-12 h-12" />
+            </div>
+          </div>
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+            <p className="text-blue-200/60 text-sm font-medium animate-pulse">
+              Verifying secure session...
+            </p>
+          </div>
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // 2. Landing Page
   if (showLanding) {
-    console.log('Rendering landing page');
+    console.log('[App] Rendering landing page (v2.1 Full-Redirect)');
     return (
       <ThemeProvider>
         <AnimatePresence mode="wait">
@@ -134,17 +160,12 @@ export default function App() {
             className="min-h-screen bg-[#0a1628] text-slate-900 dark:text-white transition-colors duration-500"
           >
             <Toaster />
-
-
-
             <LandingPage
               onGetStarted={() => {
-                console.log('onGetStarted called - setting showLanding to false');
+                console.log('[App] Landing Started -> Dashboard');
                 setShowLanding(false);
-                console.log('showLanding should now be false');
               }}
               onNavigateToGitHub={() => {
-                console.log('onNavigateToGitHub called');
                 setShowLanding(false);
                 setActiveTab('repository');
               }}
