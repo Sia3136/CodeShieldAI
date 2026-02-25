@@ -96,34 +96,11 @@ export function GitHubAuth({ onAuthChange }: GitHubAuthProps) {
     const handleLogin = async () => {
         setLoading(true);
         try {
-            const { auth_url, state } = await initiateGitHubAuth();
+            const { auth_url } = await initiateGitHubAuth();
 
-            // Store state for verification
-            sessionStorage.setItem('github_oauth_state', state);
+            // FULL PAGE REDIRECT
+            window.location.href = auth_url;
 
-            // ── Open as popup (matches callback.html) ──
-            const w = 600, h = 700;
-            const left = window.screenX + (window.outerWidth - w) / 2;
-            const top = window.screenY + (window.outerHeight - h) / 2;
-            const popup = window.open(
-                auth_url,
-                'github_oauth',
-                `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
-            );
-
-            // Fallback: if popup was blocked, do a full redirect
-            if (!popup || popup.closed) {
-                window.location.href = auth_url;
-                return;
-            }
-
-            // Check if popup was closed manually
-            const pollClose = setInterval(() => {
-                if (popup.closed) {
-                    clearInterval(pollClose);
-                    setLoading(false);
-                }
-            }, 500);
         } catch (error: any) {
             toast.error(error.message || 'Failed to initiate authentication');
             setLoading(false);
