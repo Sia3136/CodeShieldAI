@@ -88,52 +88,39 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             );
 
             if (!popup) {
-                toast.error('Please allow popups for this site');
+                // Popup blocked — fall back to full-page redirect.
+                // callback.html will save the token and redirect back.
+                window.location.href = data.auth_url;
                 return;
             }
 
-            // Listen for OAuth callback
-            const handleMessage = async (event: MessageEvent) => {
+            // ── Listen for message from callback.html ─────────────────────
+            // callback.html now does the full exchange, saves token, and
+            // sends { type: 'oauth_complete', provider, token } via postMessage.
+            const handleMessage = (event: MessageEvent) => {
                 if (event.origin !== window.location.origin) return;
 
-                // Listen for the code from the consolidated callback.html
-                if (event.data.type === 'oauth_code_received' && event.data.provider === provider) {
-                    const { code, state } = event.data;
-                    console.log(`[Auth] Code received for ${provider}:`, code.substring(0, 5) + '...');
+                if (event.data.type === 'oauth_complete' && event.data.provider === provider) {
+                    cleanup();
+                    popup?.close();
 
-                    try {
-                        // Exchange code via backend
-                        const exchangeResponse = await fetch(`${apiBase}/auth/${provider}/callback`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ code, state })
-                        });
-
-                        const authData = await exchangeResponse.json();
-                        if (!exchangeResponse.ok) throw new Error(authData.detail || 'Callback exchange failed');
-
-                        // cleanup
-                        window.removeEventListener('message', handleMessage);
-                        popup?.close();
-
-                        // Save token
-                        saveToken(authData.access_token);
-                        console.log('[Auth] Token saved successfully');
-
-                        toast.success(`Logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
-
-                        // Critical delay for storage
-                        setTimeout(() => {
-                            onSuccess();
-                            onClose();
-                        }, 100);
-                    } catch (err: any) {
-                        console.error('[Auth] Exchange error:', err);
-                        toast.error(err.message || 'OAuth exchange failed');
-                        popup?.close();
+                    // Token is already in localStorage (saved by callback.html)
+                    // But also save it explicitly in case
+                    if (event.data.token) {
+                        saveToken(event.data.token);
                     }
-                } else if (event.data.type === 'oauth_error' && event.data.provider === provider) {
-                    window.removeEventListener('message', handleMessage);
+
+                    console.log(`[Auth] ${provider} login complete`);
+                    toast.success(`Logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
+
+                    setTimeout(() => {
+                        onSuccess();
+                        onClose();
+                    }, 100);
+                }
+
+                if (event.data.type === 'oauth_error' && event.data.provider === provider) {
+                    cleanup();
                     popup?.close();
                     toast.error(event.data.error || 'OAuth authentication failed');
                 }
@@ -141,7 +128,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
             window.addEventListener('message', handleMessage);
 
-            // ── BroadcastChannel fallback (when opener is blocked) ──
+            // BroadcastChannel fallback
             let bc: BroadcastChannel | null = null;
             try {
                 bc = new BroadcastChannel('codeshield_oauth');
@@ -150,15 +137,35 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                 };
             } catch (_) { /* BroadcastChannel not supported */ }
 
-            // Check if popup was closed
+            // ── When popup closes, check if token landed in localStorage ──
             const checkClosed = setInterval(() => {
                 if (popup?.closed) {
                     clearInterval(checkClosed);
-                    window.removeEventListener('message', handleMessage);
-                    bc?.close();
+
+                    // Give a small delay for any last message to arrive
+                    setTimeout(() => {
+                        const token = localStorage.getItem('auth_token');
+                        if (token) {
+                            // callback.html saved the token — login succeeded!
+                            cleanup();
+                            console.log('[Auth] Token found in localStorage after popup closed');
+                            toast.success(`Logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}!`);
+                            onSuccess();
+                            onClose();
+                        } else {
+                            cleanup();
+                            // No token — user likely cancelled or flow failed
+                            console.log('[Auth] Popup closed without token');
+                        }
+                    }, 500);
                 }
             }, 500);
 
+            function cleanup() {
+                clearInterval(checkClosed);
+                window.removeEventListener('message', handleMessage);
+                bc?.close();
+            }
 
         } catch (error: any) {
             console.error('OAuth error:', error);

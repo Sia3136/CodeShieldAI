@@ -37,73 +37,122 @@
                 transform: rotate(360deg);
             }
         }
+
+        .error {
+            color: #f87171;
+            margin-top: 10px;
+            max-width: 400px;
+            text-align: center;
+            font-size: 14px;
+        }
     </style>
 </head>
 
 <body>
-    <div class="spinner"></div>
+    <div class="spinner" id="spinner"></div>
     <p id="status">Completing authentication...</p>
+    <p id="error" class="error" style="display:none;"></p>
 
     <script>
-        function handleCallback() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const code = urlParams.get('code');
-            const state = urlParams.get('state');
-            const error = urlParams.get('error');
+        // ── Config ──────────────────────────────────────────────────────────
+        const API_BASE = 'https://sia3136-codeshield-backend.hf.space';
+        const APP_URL = window.location.origin; // Vercel frontend root
 
-            // Detect provider from URL query or state
-            const isGoogle = window.location.search.includes('google') || (state && state.includes('google'));
-            const provider = isGoogle ? 'google' : 'github';
+        // ── Main ────────────────────────────────────────────────────────────
+        async function handleCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const state = params.get('state');
+            const error = params.get('error');
 
-            console.log(`[OAuth] Detected provider: ${provider}`);
-
-            const payload = error
-                ? { type: `oauth_error`, provider, error: urlParams.get('error_description') || error }
-                : code
-                    ? { type: `oauth_code_received`, provider, code, state }
-                    : null;
-
-            if (!payload) {
-                document.getElementById('status').innerText = 'Authorization code missing.';
+            if (error) {
+                showError(params.get('error_description') || error);
+                return;
+            }
+            if (!code) {
+                showError('Authorization code missing.');
                 return;
             }
 
-            // ─── Primary: postMessage to popup opener ───────────────────────
-            if (window.opener && !window.opener.closed) {
-                try {
-                    console.log(`[OAuth] Sending via postMessage to opener`);
-                    window.opener.postMessage(payload, window.location.origin);
-                    document.getElementById('status').innerText = 'Authentication complete! Closing...';
-                    setTimeout(() => window.close(), 1500);
-                    return;
-                } catch (e) {
-                    console.warn('[OAuth] postMessage to opener failed, trying fallback', e);
-                }
-            }
+            // Detect provider from state param (google_ prefix) or URL content
+            const isGoogle = (state && state.startsWith('google'))
+                || window.location.search.includes('scope=email');
+            const provider = isGoogle ? 'google' : 'github';
 
-            // ─── Fallback: BroadcastChannel (same-origin) ───────────────────
-            // Works when the main tab opens auth in a new TAB instead of a popup
+            console.log(`[OAuth] Provider: ${provider} | Code: ${code.substring(0, 8)}...`);
+            setStatus(`Exchanging ${provider} authorization...`);
+
+            try {
+                // ─── Exchange code with backend ─────────────────────────────
+                const res = await fetch(`${API_BASE}/auth/${provider}/callback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, state })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.detail || `Backend returned ${res.status}`);
+                }
+
+                const data = await res.json();
+                const token = data.access_token;
+
+                if (!token) {
+                    throw new Error('No access_token in response');
+                }
+
+                // ─── Save token to localStorage ─────────────────────────────
+                localStorage.setItem('auth_token', token);
+                console.log('[OAuth] Token saved to localStorage');
+
+                // ─── Also try to notify the opener (popup flow) ─────────────
+                notifyOpener({ type: 'oauth_complete', provider, token });
+
+                // ─── Close popup or redirect to app ─────────────────────────
+                setStatus('Authentication complete! Redirecting...');
+
+                // If we're in a popup, try to close; parent will detect the token
+                if (window.opener && !window.opener.closed) {
+                    // Give the opener a moment to receive the message
+                    setTimeout(() => window.close(), 800);
+                } else {
+                    // Full-page redirect — navigate to app root
+                    // App.tsx checkAuth() will find the token and skip landing
+                    setTimeout(() => { window.location.href = APP_URL; }, 500);
+                }
+
+            } catch (err) {
+                console.error('[OAuth] Exchange failed:', err);
+                showError(err.message || 'Authentication failed. Please try again.');
+            }
+        }
+
+        // ── Helpers ─────────────────────────────────────────────────────────
+        function notifyOpener(payload) {
+            // Best-effort: tell the opener the token is ready
+            try {
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage(payload, APP_URL);
+                }
+            } catch (_) { }
             try {
                 const bc = new BroadcastChannel('codeshield_oauth');
                 bc.postMessage(payload);
                 bc.close();
-                document.getElementById('status').innerText = 'Authentication complete! You can close this tab.';
-                console.log('[OAuth] Sent via BroadcastChannel');
-                setTimeout(() => window.close(), 2000);
-                return;
-            } catch (e) {
-                console.warn('[OAuth] BroadcastChannel failed, trying sessionStorage fallback', e);
-            }
+            } catch (_) { }
+        }
 
-            // ─── Last resort: sessionStorage polling ────────────────────────
-            try {
-                sessionStorage.setItem('oauth_payload', JSON.stringify(payload));
-                document.getElementById('status').innerText = 'Authentication complete! You can close this tab.';
-                console.log('[OAuth] Stored in sessionStorage as fallback');
-                setTimeout(() => window.close(), 2000);
-            } catch (e) {
-                document.getElementById('status').innerText = 'Authentication failed. Please close this tab and try again.';
-            }
+        function setStatus(msg) {
+            document.getElementById('status').innerText = msg;
+        }
+
+        function showError(msg) {
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('status').innerText = 'Authentication failed';
+            const el = document.getElementById('error');
+            el.innerText = msg;
+            el.style.display = 'block';
         }
 
         handleCallback();
