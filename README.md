@@ -7,11 +7,16 @@ CodeShieldAI is a full-stack application security scanning platform that bridges
 ---
 
 ## Quick Links (Component READMEs)
-- **Backend** → [backend/README.md](backend/README.md)
-- **Frontend** → [frontend/README.md](frontend/README.md)
-- **ML / Models** → [ml/README.md](ml/README.md)
-- **Heuristic Engine / Rules** → [rules/README.md](rules/README.md)
-- **Docs (Architecture / API / Ops)** → [docs/README.md](docs/README.md)
+
+<table width="100%">
+  <tr>
+    <td align="center"><a href="backend/README.md"><b>Backend</b></a></td>
+    <td align="center"><a href="frontend/README.md"><b>Frontend</b></a></td>
+    <td align="center"><a href="ml/README.md"><b>ML / Models</b></a></td>
+    <td align="center"><a href="rules/README.md"><b>Heuristic Engine / Rules</b></a></td>
+    <td align="center"><a href="docs/README.md"><b>Docs (Architecture / API / Ops)</b></a></td>
+  </tr>
+</table>
 
 ---
 
