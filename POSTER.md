@@ -1,14 +1,7 @@
 # CodeShieldAI — Technical Poster
 
-> **To add your poster:** Replace the placeholder below with your poster image.  
-> Upload your poster image to this repository and update the path below.
+<img width="1920" height="1080" alt="technical poster - codeshieldAI (1)" src="https://github.com/user-attachments/assets/d8504050-4851-4901-9ffb-38c623941be2" />
 
----
-
-<!-- Replace the line below with your actual poster image once uploaded -->
-<!-- ![CodeShieldAI Technical Poster](./path/to/your-poster-image.png) -->
-
-**Poster coming soon — upload your image and update this file.**
 
 ---
 
