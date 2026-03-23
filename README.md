@@ -6,9 +6,23 @@ CodeShieldAI is a full-stack application security scanning platform that bridges
 
 ---
 
-## Quick Links (Component READMEs)
+## Quick Links
 
+### Component READMEs
 [**Backend**](backend/README.md) &nbsp; | &nbsp; [**Frontend**](frontend/README.md) &nbsp; | &nbsp; [**ML / Models**](ml/README.md) &nbsp; | &nbsp; [**Heuristic Engine / Rules**](rules/README.md) &nbsp; | &nbsp; [**Docs (Architecture / API / Ops)**](docs/README.md)
+
+### Project
+[**📋 Project Details**](PROJECT_DETAILS.md) &nbsp; | &nbsp; [**🎥 Demo Video**](https://drive.google.com/drive/folders/1g2O0wYeAbk-KJthrp4tVReRFcjo5Tw2M?usp=sharing) &nbsp; | &nbsp; [**📄 Technical Poster**](POSTER.md)
+
+---
+
+## Problem Statement
+
+Modern software relies heavily on open-source code, but these repositories often contain hidden vulnerabilities like insecure APIs, SQL injections, and hardcoded credentials.
+
+Manual code reviews are slow, error-prone, and not scalable for large projects.
+
+This creates a strong need for an automated, intelligent system that can detect and flag vulnerabilities early, before the code is deployed.
 
 ---
 
@@ -24,6 +38,17 @@ The platform supports:
 - scanning public GitHub repositories (OAuth connect or paste URL),
 - viewing scan history and analytics,
 - downloading a professional PDF report.
+
+---
+
+## Who Is This For?
+
+Our solution is designed for:
+
+- **Developers** using AI-generated code in fast-paced software environments
+- **Collaborative development teams** working across shared repositories and multiple contributors
+- **DevOps and deployment teams** who need to ensure code is secure before release
+- **Companies** seeking automated pre-deployment vulnerability checks within modern AI-assisted workflows
 
 ---
 
@@ -161,3 +186,13 @@ Fine-tuning dataset: merged splits of:
 Size:
 - ~50k samples
 - ~33k vulnerable, ~17k safe
+
+---
+
+## Future Scope
+
+- **IDE plugin integration** for real-time vulnerability detection during development
+- **CI/CD pipeline integration** to enable automated security checks before deployment
+- **Support for additional programming languages** to improve versatility and adoption
+- **Larger and more diverse training datasets** to enhance detection accuracy and model performance
+- **Automated security validation for AI-generated code** to address emerging development risks
